@@ -240,6 +240,7 @@ int main()
     float elapsedTime = 0;
     cufftHandle plan;
     cufftComplex *host_data = (cufftComplex*)malloc(NX*NY*sizeof(cufftComplex));
+    cufftComplex *fft_data = (cufftComplex*)malloc(NX*NY*sizeof(cufftComplex));
     cufftComplex *dev_data;
     cudaEvent_t start,stop;
     
@@ -247,14 +248,14 @@ int main()
     srand(time(NULL));
     for(int i = 0;i<NX;i++){
         for(int j = 0;j<NY;j++){
-            host_data[i*NY+j].x = (float)data[i];  //rand()/(float)RAND_MAX;
+            host_data[i*NY+j].x = (float)data[i*NY+j];  //rand()/(float)RAND_MAX;
             host_data[i*NY+j].y = 0.0;        
         }
     }
 
     //SHOW HOST DATA
     for(int i = 0;i<16;i++){
-        printf("DATA: %3.1f %3.1f \n",host_data[i*NY+3].x,host_data[i*NY+3].y);
+        printf("DATA: %3.1f %3.1f \n",host_data[i*NY+1].x,host_data[i*NY+1].y);
     }
 
     //ALLOCATE GPU MEMORY
@@ -271,6 +272,23 @@ int main()
     
     //PERFORM COMPUTATION(fft and ifft)
     cufftExecC2C(plan,dev_data,dev_data,CUFFT_FORWARD);
+    //COPY BACK RESULTS
+    cudaMemcpy(fft_data,dev_data,sizeof(cufftComplex)*NX*NY,cudaMemcpyDeviceToHost);
+    ofstream outfile2;
+    outfile2.open("fft_data.txt");
+    // int data2[220*220] = {0};
+    for(int i = 0;i<NX;i++){
+        for(int j = 0;j<NY;j++){
+            if(j == NY - 1){
+                outfile2<<fft_data[i*NY+j].x<<endl;
+            }else{
+                outfile2<<fft_data[i*NY+j].x<<","; 
+            }     
+        }
+    }
+    outfile2.close(); 
+    
+
 
     cufftExecC2C(plan,dev_data,dev_data,CUFFT_INVERSE);//https://stackoverflow.com/questions/46562575/how-to-cuda-ifft
     
@@ -284,7 +302,7 @@ int main()
     
     //SHOW RESULTS
     for(int i = 0;i<16;i++){
-        printf("DATA: %3.1f %3.1f \n",host_data[i*NY+3].x/(NX*NY),host_data[i*NY+3].y/(NX*NY));
+        printf("DATA: %3.1f %3.1f \n",host_data[i*NY+1].x/(NX*NY),host_data[i*NY+1].y/(NX*NY));
     }
     ofstream outfile;
     outfile.open("output_data.txt");
